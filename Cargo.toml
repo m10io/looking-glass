@@ -1,0 +1,8 @@
+[workspace]
+members = [
+ "dynamic",
+ "dynamic-derive",
+ "dynamic-protobuf",
+ "test-protos"
+]
+ 

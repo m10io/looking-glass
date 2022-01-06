@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package m10.tests;
+
+message Test {
+  string name = 1;
+  int32 integer_32 = 2;
+  TestEmbedded embedded = 3;
+  repeated int32 repeated_num = 4;
+  bytes a_payload = 5;
+  bytes id = 6;
+}
+
+message TestEmbedded { int32 number = 1; }
+
+message ComplexTest {
+  ComplexTestEmbedded a = 1;
+  bool test = 2;
+}
+
+message ComplexTestEmbedded { repeated TestEnum a = 1; }
+
+enum TestEnum {
+  A = 0;
+  B = 1;
+}
+
+message User {
+  bytes owner = 1;
+  repeated AccountRef accounts = 2;
+  string name = 3;
+  bytes notification_preferences = 6;
+  bytes id = 7;
+}
+
+message AccountRef {
+  string ledger_id = 1;
+  bytes account_id = 2;
+}
