@@ -1,0 +1,21 @@
+[package]
+name = "looking-glass-derive"
+version = "0.1.0"
+authors = ["Sascha Wise <me@saschawise.com>"]
+edition = "2021"
+license = "MIT"
+description = "looking-glass is a reflection & type-erasure library for Rust"
+repository = "https://github.com/m10io/looking-glass"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+darling = "0.12"
+proc-macro2 = "1"
+syn = "1"
+quote = "1.0.2"
+
+[dev-dependencies]
+looking-glass = { version = "0.1.0", path = "../looking-glass" }
+trybuild = "1.0"

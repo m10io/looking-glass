@@ -1,4 +1,4 @@
-use dynamic_derive::Instance;
+use looking_glass_derive::Instance;
 
 #[derive(Instance, Clone, PartialEq)]
 struct Test {

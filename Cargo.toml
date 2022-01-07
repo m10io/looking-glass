@@ -1,8 +1,8 @@
 [workspace]
 members = [
- "dynamic",
- "dynamic-derive",
- "dynamic-protobuf",
+ "looking-glass",
+ "looking-glass-derive",
+ "looking-glass-protobuf",
  "test-protos"
 ]
  

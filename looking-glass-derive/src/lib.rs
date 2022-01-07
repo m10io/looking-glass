@@ -45,9 +45,9 @@ pub fn derive(stream: TokenStream) -> TokenStream {
 }
 
 fn struct_derive(parsed: DeriveInput) -> proc_macro2::TokenStream {
-    let dynamic = StructInstance::from_derive_input(&parsed).unwrap();
-    let struct_name = dynamic.ident;
-    match dynamic.data {
+    let looking_glass = StructInstance::from_derive_input(&parsed).unwrap();
+    let struct_name = looking_glass.ident;
+    match looking_glass.data {
         ast::Data::Enum(_) => quote! {},
         ast::Data::Struct(ref s) => {
             let get_attr: Vec<_> = s
@@ -65,7 +65,7 @@ fn struct_derive(parsed: DeriveInput) -> proc_macro2::TokenStream {
                             quote! { #i }
                         });
                     quote! {
-                        stringify!(#ident) => Some(dynamic::CowValue::Ref(self.#ident.as_value())),
+                        stringify!(#ident) => Some(looking_glass::CowValue::Ref(self.#ident.as_value())),
                     }
                 })
                 .collect();
@@ -83,7 +83,7 @@ fn struct_derive(parsed: DeriveInput) -> proc_macro2::TokenStream {
                 .map(|(i, field)| {
                     let ident = field.ident.clone().map(|i| quote!{ #i }).unwrap_or_else(|| { let i = syn::Index::from(i); quote! { #i } });
                     quote! {
-                        map.insert(dynamic::SmolStr::new(stringify!(#ident)), dynamic::CowValue::Ref(self.#ident.as_value()));
+                        map.insert(looking_glass::SmolStr::new(stringify!(#ident)), looking_glass::CowValue::Ref(self.#ident.as_value()));
                     }
                 })
                 .collect();
@@ -104,24 +104,24 @@ fn struct_derive(parsed: DeriveInput) -> proc_macro2::TokenStream {
                     let ident = field.ident.clone().map(|i| quote!{ #i }).unwrap_or_else(|| { let i = syn::Index::from(i); quote! { #i } });
                     quote! {
                         {
-                            let attr_ident = dynamic::SmolStr::new(stringify!(#ident));
+                            let attr_ident = looking_glass::SmolStr::new(stringify!(#ident));
                             let new_mask = field_mask.and_then(|m| m.child(&attr_ident));
                             if new_mask.is_some() || field_mask.is_none() {
-                                let value = self.get_value(stringify!(#ident)).ok_or_else(|| dynamic::Error::NotFound(attr_ident.clone()))?;
-                                let mut update_attr = instance.get_value(stringify!(#ident)).ok_or_else(|| dynamic::Error::NotFound(attr_ident.clone()))?.to_owned();
+                                let value = self.get_value(stringify!(#ident)).ok_or_else(|| looking_glass::Error::NotFound(attr_ident.clone()))?;
+                                let mut update_attr = instance.get_value(stringify!(#ident)).ok_or_else(|| looking_glass::Error::NotFound(attr_ident.clone()))?.to_owned();
                                 match (value.as_ref().as_reflected_struct(), &update_attr) {
-                                  (Some(inst), dynamic::OwnedValue::Struct(update_inst)) => {
+                                  (Some(inst), looking_glass::OwnedValue::Struct(update_inst)) => {
                                     let mut inst = inst.boxed_clone();
                                     inst.update(update_inst.as_ref(), new_mask, replace_repeated)?;
-                                    update_attr = dynamic::OwnedValue::Struct(inst);
+                                    update_attr = looking_glass::OwnedValue::Struct(inst);
                                   }
                                   _ => {}
                                 }
                                 match (value.as_ref().as_reflected_vec(), &update_attr) {
-                                  (Some(inst), dynamic::OwnedValue::Vec(update_inst)) => {
+                                  (Some(inst), looking_glass::OwnedValue::Vec(update_inst)) => {
                                     let mut inst = inst.boxed_clone();
                                     inst.update(update_inst.as_ref(), replace_repeated)?;
-                                    update_attr = dynamic::OwnedValue::Vec(inst);
+                                    update_attr = looking_glass::OwnedValue::Vec(inst);
                                   }
                                   _ => {}
                                 }
@@ -132,12 +132,12 @@ fn struct_derive(parsed: DeriveInput) -> proc_macro2::TokenStream {
                 })
                 .collect();
             let update_impl = quote! {
-                use dynamic::IntoInner;
+                use looking_glass::IntoInner;
                 #(#merge_fields)*
                 Ok(())
             };
-            let skip_generics = dynamic.skip_generics.split(',').collect::<Vec<_>>();
-            let generic_args = dynamic
+            let skip_generics = looking_glass.skip_generics.split(',').collect::<Vec<_>>();
+            let generic_args = looking_glass
                 .generics
                 .params
                 .iter()
@@ -150,7 +150,7 @@ fn struct_derive(parsed: DeriveInput) -> proc_macro2::TokenStream {
             let generic_args = quote! {
                 #(#generic_args),*
             };
-            let generic_struct_args = dynamic
+            let generic_struct_args = looking_glass
                 .generics
                 .params
                 .iter()
@@ -166,7 +166,7 @@ fn struct_derive(parsed: DeriveInput) -> proc_macro2::TokenStream {
                     _ => quote! {},
                 })
                 .collect::<Vec<_>>();
-            let where_clauses = dynamic
+            let where_clauses = looking_glass
                 .generics
                 .params
                 .iter()
@@ -180,7 +180,7 @@ fn struct_derive(parsed: DeriveInput) -> proc_macro2::TokenStream {
                             }
                         } else {
                             quote! {
-                                #ident: 'static + dynamic::Typed<'s>
+                                #ident: 'static + looking_glass::Typed<'s>
                             }
                         }
                     }
@@ -193,12 +193,12 @@ fn struct_derive(parsed: DeriveInput) -> proc_macro2::TokenStream {
                     _ => panic!("unsupported generic paramter"),
                 })
                 .collect::<Vec<_>>();
-            let where_clause = if dynamic.generics.params.is_empty() {
+            let where_clause = if looking_glass.generics.params.is_empty() {
                 quote! {}
             } else {
                 quote! { where #(#where_clauses),* }
             };
-            let static_types = dynamic
+            let static_types = looking_glass
                 .generics
                 .params
                 .iter()
@@ -214,55 +214,55 @@ fn struct_derive(parsed: DeriveInput) -> proc_macro2::TokenStream {
                 })
                 .collect::<Vec<_>>();
             let gen = quote! {
-                impl<'s, #generic_args> dynamic::Instance<'s> for #struct_name<#(#generic_struct_args),*> #where_clause {
-                    fn name(&self) -> dynamic::SmolStr {
-                        dynamic::SmolStr::new(stringify!(#struct_name))
+                impl<'s, #generic_args> looking_glass::Instance<'s> for #struct_name<#(#generic_struct_args),*> #where_clause {
+                    fn name(&self) -> looking_glass::SmolStr {
+                        looking_glass::SmolStr::new(stringify!(#struct_name))
                     }
 
-                    fn as_inst(&self) -> &(dyn dynamic::Instance<'s> + 's) {
+                    fn as_inst(&self) -> &(dyn looking_glass::Instance<'s> + 's) {
                         self
                     }
                 }
 
-                impl<'s, #generic_args> dynamic::Typed<'s> for #struct_name<#(#generic_struct_args),*> #where_clause {
-                    fn ty() -> dynamic::ValueTy {
-                        dynamic::ValueTy::Struct(std::any::TypeId::of::<#struct_name<#(#static_types),*>>())
+                impl<'s, #generic_args> looking_glass::Typed<'s> for #struct_name<#(#generic_struct_args),*> #where_clause {
+                    fn ty() -> looking_glass::ValueTy {
+                        looking_glass::ValueTy::Struct(std::any::TypeId::of::<#struct_name<#(#static_types),*>>())
                     }
 
-                    fn as_value<'t>(&'t self) -> dynamic::Value<'t, 's> where 's: 't {
-                        dynamic::Value::from_struct(self)
+                    fn as_value<'t>(&'t self) -> looking_glass::Value<'t, 's> where 's: 't {
+                        looking_glass::Value::from_struct(self)
                     }
                 }
 
-                impl<'s, #generic_args> dynamic::StructInstance<'s> for #struct_name<#(#generic_struct_args),*> #where_clause {
+                impl<'s, #generic_args> looking_glass::StructInstance<'s> for #struct_name<#(#generic_struct_args),*> #where_clause {
 
-                    fn get_value<'v>(&'v self, field: &str) -> Option<dynamic::CowValue<'v, 's>>
+                    fn get_value<'v>(&'v self, field: &str) -> Option<looking_glass::CowValue<'v, 's>>
                     where
                         's: 'v {
 
-                        use dynamic::Typed;
+                        use looking_glass::Typed;
                         #get_value_impl
                     }
 
-                    fn values<'v>(&'v self) -> std::collections::HashMap<dynamic::SmolStr, dynamic::CowValue<'v, 's>> {
-                      use dynamic::Typed;
+                    fn values<'v>(&'v self) -> std::collections::HashMap<looking_glass::SmolStr, looking_glass::CowValue<'v, 's>> {
+                      use looking_glass::Typed;
                       #attributes_impl
                     }
 
                     fn update<'v>(
                         &'v mut self,
-                        instance: &'v (dyn dynamic::StructInstance<'s> + 's),
-                        field_mask: Option<&dynamic::FieldMask>,
+                        instance: &'v (dyn looking_glass::StructInstance<'s> + 's),
+                        field_mask: Option<&looking_glass::FieldMask>,
                         replace_repeated: bool,
-                    ) -> Result<(), dynamic::Error> {
+                    ) -> Result<(), looking_glass::Error> {
                         #update_impl
                     }
 
-                    fn boxed_clone(&self) -> Box<dyn dynamic::StructInstance<'s> + 's> {
+                    fn boxed_clone(&self) -> Box<dyn looking_glass::StructInstance<'s> + 's> {
                         Box::new(self.clone())
                     }
 
-                    fn into_boxed_instance(self: Box<Self>) -> Box<dyn dynamic::Instance<'s> + 's> {
+                    fn into_boxed_instance(self: Box<Self>) -> Box<dyn looking_glass::Instance<'s> + 's> {
                         self
                     }
                 }
@@ -295,8 +295,8 @@ fn enum_derive(parsed: DataEnum, ident: Ident) -> proc_macro2::TokenStream {
                 quote! {
                     #ident::#var_ident(#(#fields),*) => {
                         EnumField::Tuple {
-                            name: dynamic::SmolStr::new(stringify!(#var_ident)),
-                            fields: vec![#(dynamic::CowValue::Ref(#fields.as_value())),*]
+                            name: looking_glass::SmolStr::new(stringify!(#var_ident)),
+                            fields: vec![#(looking_glass::CowValue::Ref(#fields.as_value())),*]
                         }
                     }
                 }
@@ -310,7 +310,7 @@ fn enum_derive(parsed: DataEnum, ident: Ident) -> proc_macro2::TokenStream {
                     .collect();
                 let inserts = fields.iter().map(|f| {
                     quote! {
-                        fields.insert(dynamic::SmolStr::new(stringify!(#f)), dynamic::CowValue::Ref(#f.as_value()));
+                        fields.insert(looking_glass::SmolStr::new(stringify!(#f)), looking_glass::CowValue::Ref(#f.as_value()));
                     }
                 });
                 quote! {
@@ -318,7 +318,7 @@ fn enum_derive(parsed: DataEnum, ident: Ident) -> proc_macro2::TokenStream {
                         let mut fields = std::collections::HashMap::default();
                         #(#inserts)*
                         EnumField::Struct {
-                            name: dynamic::SmolStr::new(stringify!(#var_ident)),
+                            name: looking_glass::SmolStr::new(stringify!(#var_ident)),
                             fields,
                         }
                     }
@@ -328,48 +328,48 @@ fn enum_derive(parsed: DataEnum, ident: Ident) -> proc_macro2::TokenStream {
                 let var_ident = var.ident;
                 quote! {
                     #ident::#var_ident => {
-                        EnumField::Unit(dynamic::SmolStr::new(stringify!(#var_ident)))
+                        EnumField::Unit(looking_glass::SmolStr::new(stringify!(#var_ident)))
                     },
                 }
             }
         });
 
     quote! {
-        impl<'s> dynamic::Instance<'s> for #ident {
-            fn name(&self) -> dynamic::SmolStr {
-                dynamic::SmolStr::new(stringify!(#ident))
+        impl<'s> looking_glass::Instance<'s> for #ident {
+            fn name(&self) -> looking_glass::SmolStr {
+                looking_glass::SmolStr::new(stringify!(#ident))
             }
 
-            fn as_inst(&self) -> &(dyn dynamic::Instance<'s> + 's) {
+            fn as_inst(&self) -> &(dyn looking_glass::Instance<'s> + 's) {
                 self
             }
         }
 
-        impl<'s> dynamic::Typed<'s> for #ident {
-            fn ty() -> dynamic::ValueTy {
-                dynamic::ValueTy::Enum(std::any::TypeId::of::<Self>())
+        impl<'s> looking_glass::Typed<'s> for #ident {
+            fn ty() -> looking_glass::ValueTy {
+                looking_glass::ValueTy::Enum(std::any::TypeId::of::<Self>())
             }
 
-            fn as_value<'a>(&'a self) -> dynamic::Value<'a, 's> where 's: 'a {
-                dynamic::Value::from_enum(self)
+            fn as_value<'a>(&'a self) -> looking_glass::Value<'a, 's> where 's: 'a {
+                looking_glass::Value::from_enum(self)
             }
         }
 
-        impl<'s> dynamic::EnumInstance<'s> for #ident {
-            fn boxed_clone(&self) -> Box<dyn dynamic::EnumInstance<'s> + 's> {
+        impl<'s> looking_glass::EnumInstance<'s> for #ident {
+            fn boxed_clone(&self) -> Box<dyn looking_glass::EnumInstance<'s> + 's> {
                 Box::new(self.clone())
             }
 
 
-            fn field<'a>(&'a self) -> dynamic::EnumField<'a, 's> where 's: 'a {
-                use dynamic::EnumField;
-                use dynamic::Typed;
+            fn field<'a>(&'a self) -> looking_glass::EnumField<'a, 's> where 's: 'a {
+                use looking_glass::EnumField;
+                use looking_glass::Typed;
                 match self {
                     #(#matches)*
                 }
             }
 
-            fn into_boxed_instance(self: Box<Self>) -> Box<dyn dynamic::Instance<'s> + 'static> {
+            fn into_boxed_instance(self: Box<Self>) -> Box<dyn looking_glass::Instance<'s> + 'static> {
                 self
             }
         }

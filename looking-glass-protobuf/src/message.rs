@@ -1,7 +1,7 @@
 use crate::{DescriptorDatabase, Error, Tranche};
 use crate::{FieldType, MessageView};
 use bytes::{Buf, BufMut, Bytes};
-use dynamic::{CowValue, Instance, IntoInner, OwnedValue, SmolStr, StructInstance, Typed, ValueTy};
+use looking_glass::{CowValue, Instance, IntoInner, OwnedValue, SmolStr, StructInstance, Typed, ValueTy};
 use prost::encoding::{encode_key, encode_varint, encoded_len_varint, key_len, WireType};
 use std::{
     any::TypeId,
@@ -10,7 +10,7 @@ use std::{
     sync::Arc,
 };
 
-/// A dynamic representation of a ProtocolBuffer message.
+/// A looking_glass representation of a ProtocolBuffer message.
 ///
 /// DynamicMessage allows users to create and read ProtocolBuffer messages at runtime. A DynamicMessage is created from a [`MessageView`], but unlike a [`MessageView`] it owns its data.
 /// This means that DynamicMessages can be modified and re-encoded. In the name of efficiency string and byte, types are reference counted from their source.
@@ -28,7 +28,7 @@ impl DynamicMessage {
         let descriptor_name = view.descriptor_name.clone();
         let descriptor = descriptor_database
             .descriptor(&descriptor_name)
-            .ok_or_else(|| dynamic::Error::NotFound("descriptor".into()))?;
+            .ok_or_else(|| looking_glass::Error::NotFound("descriptor".into()))?;
         let values = descriptor
             .fields
             .iter()
@@ -97,18 +97,18 @@ impl StructInstance<'static> for DynamicMessage {
     fn update<'a>(
         &'a mut self,
         update: &'a (dyn StructInstance<'static> + 'static),
-        field_mask: Option<&dynamic::FieldMask>,
+        field_mask: Option<&looking_glass::FieldMask>,
         replace_repeated: bool,
-    ) -> Result<(), dynamic::Error> {
+    ) -> Result<(), looking_glass::Error> {
         let descriptor = self
             .descriptor_database
             .descriptor(&self.descriptor_name)
-            .ok_or_else(|| dynamic::Error::NotFound("descriptor".into()))?;
+            .ok_or_else(|| looking_glass::Error::NotFound("descriptor".into()))?;
         for (key, update_value) in update.values() {
             let tag = descriptor
                 .tags_by_name
                 .get(&key)
-                .ok_or_else(|| dynamic::Error::NotFound("tag".into()))?;
+                .ok_or_else(|| looking_glass::Error::NotFound("tag".into()))?;
             let new_mask = field_mask.and_then(|m| m.child(&key));
             if new_mask.is_some() || field_mask.is_none() {
                 let field = self.values.get_mut(tag);
@@ -128,12 +128,12 @@ impl StructInstance<'static> for DynamicMessage {
                         let field = descriptor
                             .fields
                             .get(tag)
-                            .ok_or_else(|| dynamic::Error::NotFound("descriptor".into()))?;
+                            .ok_or_else(|| looking_glass::Error::NotFound("descriptor".into()))?;
                         let update_value = if let Some(view) =
                             update_value.as_ref().borrow::<&MessageView<Bytes>>()
                         {
                             OwnedValue::Option(Box::new(Some(DynamicMessage::new(view).map_err(
-                                |_| dynamic::Error::TypeError {
+                                |_| looking_glass::Error::TypeError {
                                     expected: "valid message view".into(),
                                     found: "invalid message view".into(),
                                 },
@@ -177,15 +177,15 @@ impl StructInstance<'static> for DynamicMessage {
 }
 
 impl Typed<'static> for DynamicMessage {
-    fn ty() -> dynamic::ValueTy {
+    fn ty() -> looking_glass::ValueTy {
         ValueTy::Struct(TypeId::of::<Self>())
     }
 
-    fn as_value<'a>(&'a self) -> dynamic::Value<'a, 'static>
+    fn as_value<'a>(&'a self) -> looking_glass::Value<'a, 'static>
     where
         'static: 'a,
     {
-        dynamic::Value::from_struct(self)
+        looking_glass::Value::from_struct(self)
     }
 }
 

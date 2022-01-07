@@ -1,4 +1,4 @@
-use dynamic::SmolStr;
+use looking_glass::SmolStr;
 use thiserror::Error;
 
 mod descriptors;
@@ -24,7 +24,7 @@ pub enum Error {
     #[error("incorrect type (expected {expected:?}, found {found:?})")]
     IncorrectType { expected: SmolStr, found: SmolStr },
     #[error("{0}")]
-    Dynamic(#[from] dynamic::Error),
+    LookingGlass(#[from] looking_glass::Error),
     #[error("utf8 error")]
     Utf8(#[from] std::str::Utf8Error),
 }

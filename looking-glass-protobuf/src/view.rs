@@ -1,6 +1,6 @@
 use crate::{descriptors::*, DynamicMessage, Error};
 use bytes::{buf::Buf, Bytes};
-use dynamic::{CowValue, Instance, OwnedValue, SmolStr, StructInstance, Typed, Value, ValueTy};
+use looking_glass::{CowValue, Instance, OwnedValue, SmolStr, StructInstance, Typed, Value, ValueTy};
 use once_cell::sync::OnceCell;
 use prost::encoding::{decode_key, decode_varint, WireType};
 use rustc_hash::FxHashMap;
@@ -71,7 +71,7 @@ impl<T: Tranche> MessageView<T> {
     ) -> Result<MessageView<T>, Error> {
         let descriptor = descriptor_database
             .descriptor(&descriptor_name)
-            .ok_or_else(|| dynamic::Error::NotFound("missing descriptor".into()))?;
+            .ok_or_else(|| looking_glass::Error::NotFound("missing descriptor".into()))?;
         let table = descriptor
             .fields
             .keys()
@@ -88,7 +88,7 @@ impl<T: Tranche> MessageView<T> {
     pub fn view_tag(&self, tag: u32) -> Result<&ValueView<T>, Error> {
         self.table
             .get(&tag)
-            .ok_or_else(|| dynamic::Error::NotFound("missing tag".into()))?
+            .ok_or_else(|| looking_glass::Error::NotFound("missing tag".into()))?
             .get_or_try_init(|| self.view_tag_inner(tag))
     }
 
@@ -96,11 +96,11 @@ impl<T: Tranche> MessageView<T> {
         let descriptor = self
             .descriptor_database
             .descriptor(&self.descriptor_name)
-            .ok_or_else(|| dynamic::Error::NotFound("missing descriptor".into()))?;
+            .ok_or_else(|| looking_glass::Error::NotFound("missing descriptor".into()))?;
         let field = descriptor
             .fields
             .get(&(tag as u32))
-            .ok_or_else(|| dynamic::Error::NotFound("field".into()))?;
+            .ok_or_else(|| looking_glass::Error::NotFound("field".into()))?;
         let bytes = self.raw_message_view.raw_field_by_tag(tag, field.repeated);
         match (field.repeated, bytes) {
             (false, Some(RawField::Single { mut bytes, .. })) => Ok(bytes_to_value_view(
@@ -157,11 +157,11 @@ impl<T: Tranche> MessageView<T> {
             let descriptor = self
                 .descriptor_database
                 .descriptor(&self.descriptor_name)
-                .ok_or_else(|| dynamic::Error::NotFound("missing descriptor".into()))?;
+                .ok_or_else(|| looking_glass::Error::NotFound("missing descriptor".into()))?;
             *descriptor
                 .tags_by_name
                 .get(field)
-                .ok_or_else(|| dynamic::Error::NotFound("field".into()))?
+                .ok_or_else(|| looking_glass::Error::NotFound("field".into()))?
         };
         self.view_tag(tag)
     }
@@ -221,7 +221,7 @@ pub fn bytes_to_value_view<T: Tranche>(
                     descriptor_database.clone(),
                 )?))
             } else {
-                return Err(Error::Dynamic(dynamic::Error::NotFound("field".into())));
+                return Err(Error::LookingGlass(looking_glass::Error::NotFound("field".into())));
             }
         }
         FieldType::Bytes => {
@@ -269,7 +269,7 @@ pub fn add_bytes_to_repeated_view<T: Tranche>(
                     MessageView::new(raw_message, name.to_string(), descriptor_database.clone())?;
                 v.push(val)
             } else {
-                return Err(Error::Dynamic(dynamic::Error::NotFound("field".into())));
+                return Err(Error::LookingGlass(looking_glass::Error::NotFound("field".into())));
             }
         }
         (FieldType::Bytes, RepeatedValueView::Bytes(v)) => {
@@ -663,9 +663,9 @@ impl<'s> StructInstance<'s> for MessageView<Bytes> {
     fn update(
         &mut self,
         _update: &dyn StructInstance,
-        _field_mask: Option<&dynamic::FieldMask>,
+        _field_mask: Option<&looking_glass::FieldMask>,
         _replace_repeated: bool,
-    ) -> Result<(), dynamic::Error> {
+    ) -> Result<(), looking_glass::Error> {
         Ok(())
     }
 
@@ -700,7 +700,7 @@ impl<'s> StructInstance<'s> for MessageView<Bytes> {
 }
 
 impl<'s> Typed<'s> for MessageView<Bytes> {
-    fn ty() -> dynamic::ValueTy {
+    fn ty() -> looking_glass::ValueTy {
         ValueTy::Struct(TypeId::of::<Self>())
     }
 

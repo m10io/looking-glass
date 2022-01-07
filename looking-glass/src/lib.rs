@@ -1,4 +1,4 @@
-//! Dynamic provides reflection for virtually any Rust type. It does this through a set of traits,
+//! Looking Glass provides reflection for virtually any Rust type. It does this through a set of traits,
 //! and type-erasing enums.
 //!
 //! We allow the user to store any type, regardless of lifetime, through a trait called [`Instance`].
@@ -7,7 +7,7 @@
 //! This ensures that lifetime guarantee are maintained at compile-time.
 //! Much like [`std::any::Any`], we perform runtime type-checks to ensure type-safety.
 //!
-//! Generally it is best to use the derive macros from [`dynamic_derive`]
+//! Generally it is best to use the derive macros from [`looking_glass_derive`]
 //! to implement the various traits here,
 //! as care must be taken when implementing them to not enable
 //! undefined behaviour. Check out the docs for [`Value`], [`StructInstance`], [`VecInstance`],
@@ -19,8 +19,8 @@
 //! ## Struct reflection
 //!
 //! ```
-//! use dynamic::Typed;
-//! use dynamic_derive::Instance;
+//! use looking_glass::Typed;
+//! use looking_glass_derive::Instance;
 //!
 //! #[derive(Instance, Clone, PartialEq)]
 //! struct Foo {
@@ -39,7 +39,7 @@
 //! ## Vec reflection
 //!
 //! ```
-//! use dynamic::{Typed, VecInstance};
+//! use looking_glass::{Typed, VecInstance};
 //!
 //! let vec = vec!["test".to_string(), "123".to_string(), "foo".to_string()];
 //! let first = vec.get_value(0).expect("get value failed");
@@ -57,13 +57,13 @@
 //! The [`ValueTy`] for this type would be constructed like so:
 //!
 //! ```
-//! # use dynamic::ValueTy;
+//! # use looking_glass::ValueTy;
 //! # struct Foo<'a>(&'a str);
 //!
 //! let _ = ValueTy::Struct(std::any::TypeId::of::<Foo<'static>>());
 //! ```
 //!
-//! [`dynamic_derive`]: ../dynamic_derive/index.html
+//! [`looking_glass_derive`]: ../looking_glass_derive/index.html
 pub use bytes::Bytes;
 pub use smol_str::SmolStr;
 use std::any::TypeId;
@@ -102,9 +102,9 @@ pub trait FromValue<'a, 's>: Sized {
     fn from_value(value: &Value<'a, 's>) -> Option<Self>;
 }
 
-/// A ext trait for [`dynamic_derive`] meant to consume a [`OwnedValue`] and return `T`
+/// A ext trait for [`looking_glass_derive`] meant to consume a [`OwnedValue`] and return `T`
 ///
-/// [`dynamic_derive`]: ../dynamic_derive
+/// [`looking_glass_derive`]: ../looking_glass_derive
 pub trait IntoInner<T> {
     fn into_inner(self) -> Result<T, Error>;
 }

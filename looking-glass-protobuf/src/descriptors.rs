@@ -1,5 +1,5 @@
 use crate::{StrTranche, Tranche, ValueView};
-use dynamic::SmolStr;
+use looking_glass::SmolStr;
 use prost_types::{
     field_descriptor_proto, DescriptorProto, FieldDescriptorProto, FileDescriptorProto,
 };

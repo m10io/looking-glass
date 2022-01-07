@@ -1,6 +1,6 @@
 use crate::*;
 use bytes::BytesMut;
-use dynamic::{CowValue, FieldMask, StructInstance, Typed};
+use looking_glass::{CowValue, FieldMask, StructInstance, Typed};
 use test_protos::*;
 use prost::Message;
 use prost_types::FileDescriptorSet;
@@ -93,7 +93,7 @@ fn test_message_conversion() {
     let raw_view = RawMessageView::new(&bytes[..]).expect("msg parse failed");
     let view = MessageView::new(raw_view, ".m10.tests.Test".to_string(), Arc::new(db))
         .expect("msg parse failed");
-    let message = DynamicMessage::new(&view).expect("failed to build dynamic message");
+    let message = DynamicMessage::new(&view).expect("failed to build looking_glass message");
     let name_field = message.get_value("name").expect("field not found");
     assert_eq!(name_field, CowValue::Ref("test".as_value()));
     let int_field = message.get_value("integer_32").expect("field not found");
@@ -119,7 +119,7 @@ fn test_message_encode() {
     let raw_view = RawMessageView::new(&bytes[..]).expect("msg parse failed");
     let view = MessageView::new(raw_view, ".m10.tests.Test".to_string(), Arc::new(db))
         .expect("msg parse failed");
-    let message = DynamicMessage::new(&view).expect("failed to build dynamic message");
+    let message = DynamicMessage::new(&view).expect("failed to build looking_glass message");
     let mut bytes_2 = BytesMut::new();
     message.encode(&mut bytes_2);
     assert_eq!(bytes, bytes_2);
@@ -139,7 +139,7 @@ fn test_complex_message_encode() {
     let raw_view = RawMessageView::new(&bytes[..]).expect("msg parse failed");
     let view = MessageView::new(raw_view, ".m10.tests.ComplexTest".to_string(), Arc::new(db))
         .expect("msg parse failed");
-    let message = DynamicMessage::new(&view).expect("failed to build dynamic message");
+    let message = DynamicMessage::new(&view).expect("failed to build looking_glass message");
     let mut bytes_2 = vec![];
     message.encode(&mut bytes_2);
     assert_eq!(bytes, bytes_2);
@@ -161,7 +161,7 @@ fn test_message_merge() {
     let raw_view = RawMessageView::new(&bytes[..]).expect("msg parse failed");
     let view = MessageView::new(raw_view, ".m10.tests.Test".to_string(), Arc::clone(&db))
         .expect("msg parse failed");
-    let mut message = DynamicMessage::new(&view).expect("failed to build dynamic message");
+    let mut message = DynamicMessage::new(&view).expect("failed to build looking_glass message");
     let mut bytes = vec![];
     let test = Test {
         id: vec![],
@@ -202,7 +202,7 @@ fn test_message_merge_encode() {
     let raw_view = RawMessageView::new(bytes.freeze()).expect("msg parse failed");
     let view = MessageView::new(raw_view, ".m10.tests.Test".to_string(), Arc::clone(&db))
         .expect("msg parse failed");
-    let mut message = DynamicMessage::new(&view).expect("failed to build dynamic message");
+    let mut message = DynamicMessage::new(&view).expect("failed to build looking_glass message");
     let mut bytes = BytesMut::new();
     let test = Test {
         name: "foo".to_string(),
@@ -247,7 +247,7 @@ fn test_message_masked() {
     let raw_view = RawMessageView::new(&bytes[..]).expect("msg parse failed");
     let view = MessageView::new(raw_view, ".m10.tests.Test".to_string(), Arc::clone(&db))
         .expect("msg parse failed");
-    let mut message = DynamicMessage::new(&view).expect("failed to build dynamic message");
+    let mut message = DynamicMessage::new(&view).expect("failed to build looking_glass message");
     let mut bytes = vec![];
     let test = Test {
         id: vec![],
@@ -292,7 +292,7 @@ fn test_message_merge_encode_masked() {
     let raw_view = RawMessageView::new(bytes.freeze()).expect("msg parse failed");
     let view = MessageView::new(raw_view, ".m10.tests.User".to_string(), Arc::clone(&db))
         .expect("msg parse failed");
-    let mut message = DynamicMessage::new(&view).expect("failed to build dynamic message");
+    let mut message = DynamicMessage::new(&view).expect("failed to build looking_glass message");
     let mut bytes = BytesMut::new();
     let test = User {
         notification_preferences: vec![1, 2, 3],

@@ -1,0 +1,18 @@
+[package]
+name = "looking-glass"
+version = "0.1.1"
+authors = ["Sascha Wise <me@saschawise.com>"]
+edition = "2021"
+license = "MIT"
+description = "looking-glass is a reflection & type-erasure library for Rust"
+repository = "https://github.com/m10io/looking-glass"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bytes = "1"
+smol_str = "0.1"
+thiserror = "1"
+
+[dev-dependencies]
+looking-glass-derive  = { version = "0.1.0", path = "../looking-glass-derive" }
