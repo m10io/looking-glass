@@ -310,15 +310,12 @@ fn test_message_merge_encode_masked() {
             false,
         )
         .expect("failed to merge");
-    println!("message: {:?}", message);
     let mut bytes = BytesMut::new();
     message.encode(&mut bytes);
-    println!("{:?}", bytes);
     let doc = MessageView::new(
         RawMessageView::new(bytes.freeze()).unwrap(),
         ".m10.tests.User".to_string(),
         db,
     )
     .expect("decode failed");
-    println!("{:?}", doc);
 }

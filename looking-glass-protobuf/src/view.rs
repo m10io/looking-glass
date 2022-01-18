@@ -110,7 +110,6 @@ impl<T: Tranche> MessageView<T> {
             )?),
             (true, Some(RawField::Single { mut bytes, .. })) => {
                 let mut v = RepeatedValueView::empty_from_field(&field.field_type)?;
-                println!("adding to repeated field: {:?}", v);
                 while bytes.remaining() > 0 {
                     add_bytes_to_repeated_view(
                         &mut bytes,
@@ -123,7 +122,6 @@ impl<T: Tranche> MessageView<T> {
             }
             (true, Some(RawField::Repeated { bytes, .. })) => {
                 let mut v = RepeatedValueView::empty_from_field(&field.field_type)?;
-                println!("adding to repeated field: {:?}", v);
                 for mut b in bytes.into_iter() {
                     add_bytes_to_repeated_view(
                         &mut b,
@@ -280,7 +278,6 @@ pub fn add_bytes_to_repeated_view<T: Tranche>(
         (FieldType::Enum(_), RepeatedValueView::Enum(v)) => v.push(decode_varint(bytes)? as i32),
         (FieldType::Group, _) => return Err(Error::Unimplemented),
         (f, r) => {
-            println!("oops!!");
             return Err(Error::IncorrectType {
                 expected: format!("{:?}", f).into(),
                 found: format!("{:?}", r).into(),
