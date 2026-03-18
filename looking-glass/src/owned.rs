@@ -3,7 +3,6 @@ use std::hash::Hash;
 use crate::typed::Typed;
 use crate::*;
 pub use bytes::Bytes;
-pub use smol_str::SmolStr;
 
 /// An enum containing an owned copy of a [`Value`]
 #[derive(Clone, Debug)]

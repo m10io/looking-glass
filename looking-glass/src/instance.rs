@@ -380,23 +380,17 @@ impl<'s, T: Typed<'s> + Clone + 's + PartialEq> Typed<'s> for Vec<T> {
     }
 }
 
-impl<'a, V> Instance<'a> for HashMap<String, V>
-where
-    V: Typed<'a> + Clone + PartialEq + 'a + Eq + Hash,
-{
+impl<'s, T: Typed<'s> + Clone + 's + PartialEq> Instance<'s> for HashMap<String, T> {
     fn name(&self) -> SmolStr {
-        format!("HashMap<String, {:?}>", V::ty()).into() 
+        format!("HashMap<String, {:?}>", T::ty()).into() 
     }
 
-    fn as_inst(&self) -> &(dyn Instance<'a> + 'a) {
+    fn as_inst(&self) -> &(dyn Instance<'s> + 's) {
         self
     }
 }
 
-impl<'s, V> HashMapInstance<'s> for HashMap<String, V>
-where
-    V: Typed<'s> + Clone + PartialEq + 's + Eq + Hash,
-{
+impl<'s, T: Typed<'s> + Clone + 's + PartialEq> HashMapInstance<'s> for HashMap<String, T> {
     fn get_value<'a>(&'a self, key: &str) -> Option<Value<'a, 's>>
     where
         's: 'a,
@@ -439,10 +433,7 @@ where
     }
 }
 
-impl<'s, T> Typed<'s> for HashMap<String, T>
-where
-    T: Typed<'s> + Clone + 's + PartialEq + Eq + Hash,
-{
+impl<'s, T: Typed<'s> + Clone + 's + PartialEq> Typed<'s> for HashMap<String, T> {
     fn ty() -> ValueTy {
         ValueTy::HashMap(Box::new(T::ty()))
     }
