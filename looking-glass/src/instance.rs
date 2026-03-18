@@ -388,10 +388,9 @@ impl<'s, T: Typed<'s> + Clone + 's + PartialEq> Typed<'s> for Vec<T> {
     }
 }
 
-impl<'s, T, S> Instance<'s> for HashMap<String, T, S>
+impl<'s, T> Instance<'s> for HashMap<String, T>
 where
     T: Typed<'s> + Clone + 's + PartialEq,
-    S: BuildHasher + Default + Clone + 's + Send + Sync,
 {
     fn name(&self) -> SmolStr {
         format!("HashMap<String, {:?}>", T::ty()).into() 
@@ -402,10 +401,9 @@ where
     }
 }
 
-impl<'s, T, S> HashMapInstance<'s> for HashMap<String, T, S>
+impl<'s, T> HashMapInstance<'s> for HashMap<String, T>
 where
     T: Typed<'s> + Clone + 's + PartialEq,
-    S: BuildHasher + Default + Clone + 's + Send + Sync,
 {
     fn get_value<'a>(&'a self, key: &str) -> Option<Value<'a, 's>>
     where
@@ -421,10 +419,10 @@ where
         field_mask: Option<&FieldMask>,
         replace_repeated: bool,
     ) -> Result<(), Error> {
-        if let Some(map) = Value::from_hashmap(update).borrow::<&HashMap<String, T, S>>() {
+        if let Some(map) = Value::from_hashmap(update).borrow::<&HashMap<String, T>>() {
             match (replace_repeated, field_mask) {
                 (true, None) => {
-                    let _ = std::mem::replace(self as &mut HashMap<String, T, S>, map.clone());
+                    let _ = std::mem::replace(self as &mut HashMap<String, T>, map.clone());
                 }
                 (true, Some(mask)) => {
                     let masked_keys_to_remove: Vec<String> = self
@@ -496,10 +494,9 @@ where
     }
 }
 
-impl<'s, T, S> Typed<'s> for HashMap<String, T, S>
+impl<'s, T> Typed<'s> for HashMap<String, T>
 where
     T: Typed<'s> + Clone + 's + PartialEq,
-    S: BuildHasher + Default + Clone + 's + Send + Sync,
 {
     fn ty() -> ValueTy {
         ValueTy::HashMap(Box::new(T::ty()))
