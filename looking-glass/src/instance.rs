@@ -1,7 +1,7 @@
 use crate::*;
 pub use bytes::Bytes;
 pub use smol_str::SmolStr;
-use std::{collections::HashMap, fmt::Debug, hash::{BuildHasher, Hash}};
+use std::{collections::HashMap, fmt::Debug, hash::BuildHasher};
 
 /// Any reflected type
 pub trait Instance<'ty>: TypedObj + Send + Sync {
@@ -388,7 +388,11 @@ impl<'s, T: Typed<'s> + Clone + 's + PartialEq> Typed<'s> for Vec<T> {
     }
 }
 
-impl<'s, T: Typed<'s> + Clone + 's + PartialEq> Instance<'s> for HashMap<String, T> {
+impl<'s, T, S> Instance<'s> for HashMap<String, T, S>
+where
+    T: Typed<'s> + Clone + 's + PartialEq,
+    S: BuildHasher + Default + Clone + 's + Send + Sync,
+{
     fn name(&self) -> SmolStr {
         format!("HashMap<String, {:?}>", T::ty()).into() 
     }
@@ -398,7 +402,11 @@ impl<'s, T: Typed<'s> + Clone + 's + PartialEq> Instance<'s> for HashMap<String,
     }
 }
 
-impl<'s, T: Typed<'s> + Clone + 's + PartialEq> HashMapInstance<'s> for HashMap<String, T> {
+impl<'s, T, S> HashMapInstance<'s> for HashMap<String, T, S>
+where
+    T: Typed<'s> + Clone + 's + PartialEq,
+    S: BuildHasher + Default + Clone + 's + Send + Sync,
+{
     fn get_value<'a>(&'a self, key: &str) -> Option<Value<'a, 's>>
     where
         's: 'a,
@@ -413,10 +421,10 @@ impl<'s, T: Typed<'s> + Clone + 's + PartialEq> HashMapInstance<'s> for HashMap<
         field_mask: Option<&FieldMask>,
         replace_repeated: bool,
     ) -> Result<(), Error> {
-        if let Some(map) = Value::from_hashmap(update).borrow::<&HashMap<String, T>>() {
+        if let Some(map) = Value::from_hashmap(update).borrow::<&HashMap<String, T, S>>() {
             match (replace_repeated, field_mask) {
                 (true, None) => {
-                    let _ = std::mem::replace(self as &mut HashMap<String, T>, map.clone());
+                    let _ = std::mem::replace(self as &mut HashMap<String, T, S>, map.clone());
                 }
                 (true, Some(mask)) => {
                     let masked_keys_to_remove: Vec<String> = self
@@ -488,7 +496,11 @@ impl<'s, T: Typed<'s> + Clone + 's + PartialEq> HashMapInstance<'s> for HashMap<
     }
 }
 
-impl<'s, T: Typed<'s> + Clone + 's + PartialEq> Typed<'s> for HashMap<String, T> {
+impl<'s, T, S> Typed<'s> for HashMap<String, T, S>
+where
+    T: Typed<'s> + Clone + 's + PartialEq,
+    S: BuildHasher + Default + Clone + 's + Send + Sync,
+{
     fn ty() -> ValueTy {
         ValueTy::HashMap(Box::new(T::ty()))
     }

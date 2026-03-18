@@ -1,5 +1,3 @@
-use std::hash::Hash;
-
 use crate::typed::Typed;
 use crate::*;
 pub use bytes::Bytes;
