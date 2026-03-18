@@ -224,6 +224,14 @@ pub trait HashMapInstance<'s>: Instance<'s> + 's {
     /// Returns a clone of the instance in a [`Box`].
     fn boxed_clone(&self) -> Box<dyn HashMapInstance<'s> + 's>;
 
+    /// Updates an instance based on the instance passed in. If a field mask is specified only the fields passed with the mask will be updated.
+    fn update<'a>(
+        &'a mut self,
+        update: &'a (dyn HashMapInstance<'s> + 's),
+        field_mask: Option<&FieldMask>,
+        replace_repeated: bool,
+    ) -> Result<(), Error>;
+
     /// Returns a HashMap containing all the attributes of the instance.
     fn values<'a>(&'a self) -> HashMap<String, CowValue<'a, 's>>
     where
@@ -397,6 +405,53 @@ impl<'s, T: Typed<'s> + Clone + 's + PartialEq> HashMapInstance<'s> for HashMap<
     {
         let val = self.get(key)?.as_value();
         Some(val)
+    }
+
+    fn update<'a>(
+        &'a mut self,
+        update: &'a (dyn HashMapInstance<'s> + 's),
+        field_mask: Option<&FieldMask>,
+        replace_repeated: bool,
+    ) -> Result<(), Error> {
+        if let Some(map) = Value::from_hashmap(update).borrow::<&HashMap<String, T>>() {
+            match (replace_repeated, field_mask) {
+                (true, None) => {
+                    let _ = std::mem::replace(self as &mut HashMap<String, T>, map.clone());
+                }
+                (true, Some(mask)) => {
+                    let masked_keys_to_remove: Vec<String> = self
+                        .keys()
+                        .filter(|k| {
+                            let in_mask = mask.child(&SmolStr::new(k.as_str())).is_some();
+                            let in_update = map.contains_key(k.as_str());
+                            in_mask && !in_update
+                        })
+                        .cloned()
+                        .collect();
+                    for key in masked_keys_to_remove {
+                        self.remove(&key);
+                    }
+                    for (key, value) in map.iter() {
+                        if mask.child(&SmolStr::new(key.as_str())).is_some() {
+                            self.insert(key.clone(), value.clone());
+                        }
+                    }
+                }
+                (false, None) => {
+                    for (key, value) in map.iter() {
+                        self.insert(key.clone(), value.clone());
+                    }
+                }
+                (false, Some(mask)) => {
+                    for (key, value) in map.iter() {
+                        if mask.child(&SmolStr::new(key.as_str())).is_some() {
+                            self.insert(key.clone(), value.clone());
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     fn values<'a>(&'a self) -> HashMap<String, CowValue<'a, 's>>
