@@ -1,7 +1,6 @@
 use crate::typed::Typed;
 use crate::*;
 pub use bytes::Bytes;
-pub use smol_str::SmolStr;
 
 /// An enum containing an owned copy of a [`Value`]
 #[derive(Clone, Debug)]
@@ -19,6 +18,7 @@ pub enum OwnedValue<'ty> {
     Bool(bool),
     String(String),
     Vec(Box<dyn VecInstance<'ty> + 'ty>),
+    HashMap(Box<dyn HashMapInstance<'ty> + 'ty>),
     Struct(Box<dyn StructInstance<'ty> + 'ty>),
     Enum(Box<dyn EnumInstance<'ty> + 'ty>),
     Bytes(Bytes),
@@ -42,6 +42,7 @@ impl<'ty> PartialEq for OwnedValue<'ty> {
             (Bool(l), Bool(r)) => l == r,
             (String(l), String(r)) => l == r,
             (Vec(l), Vec(r)) => l == r,
+            (HashMap(l), HashMap(r)) => l == r,
             (Struct(l), Struct(r)) => l == r,
             (Enum(l), Enum(r)) => l == r,
             (Bytes(l), Bytes(r)) => l == r,
@@ -70,6 +71,7 @@ impl<'v> OwnedValue<'v> {
             OwnedValue::Bool(a) => a.as_value(),
             OwnedValue::String(a) => a.as_value(),
             OwnedValue::Vec(a) => Value::from_vec(a.as_ref()),
+            OwnedValue::HashMap(a) => Value::from_hashmap(a.as_ref()),
             OwnedValue::Struct(a) => Value::from_struct(a.as_ref()),
             OwnedValue::Enum(a) => Value::from_enum(a.as_ref()),
             OwnedValue::Bytes(b) => b.as_value(),

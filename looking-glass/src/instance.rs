@@ -1,7 +1,7 @@
 use crate::*;
 pub use bytes::Bytes;
 pub use smol_str::SmolStr;
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug, hash::BuildHasher};
 
 /// Any reflected type
 pub trait Instance<'ty>: TypedObj + Send + Sync {
@@ -211,6 +211,59 @@ impl<'s> Clone for Box<dyn VecInstance<'s> + 's> {
     }
 }
 
+/// A reflected [`HashMap`]
+pub trait HashMapInstance<'s>: Instance<'s> + 's {
+    fn get_value<'a>(&'a self, key: &str) -> Option<Value<'a, 's>>
+    where
+        's: 'a;
+
+    fn is_empty(&self) -> bool;
+
+    fn len(&self) -> usize;
+
+    /// Returns a clone of the instance in a [`Box`].
+    fn boxed_clone(&self) -> Box<dyn HashMapInstance<'s> + 's>;
+
+    /// Updates an instance based on the instance passed in. If a field mask is specified only the fields passed with the mask will be updated.
+    fn update<'a>(
+        &'a mut self,
+        update: &'a (dyn HashMapInstance<'s> + 's),
+        field_mask: Option<&FieldMask>,
+        replace_repeated: bool,
+    ) -> Result<(), Error>;
+
+    /// Returns a HashMap containing all the attributes of the instance.
+    fn values<'a>(&'a self) -> HashMap<String, CowValue<'a, 's>>
+    where
+        's: 'a;
+
+    fn hashmap_eq(&self, inst: &(dyn HashMapInstance<'s> + 's)) -> bool;
+
+    fn into_boxed_instance(self: Box<Self>) -> Box<dyn Instance<'s> + 's>;
+}
+
+impl<'s> std::fmt::Debug for dyn HashMapInstance<'s> + 's {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut builder = f.debug_map();
+        for (k, v) in self.values() {
+            builder.entry(&k, &v);
+        }
+        builder.finish()
+    }
+}
+
+impl<'s> PartialEq for dyn HashMapInstance<'s> + 's {
+    fn eq(&self, other: &Self) -> bool {
+        self.hashmap_eq(other)
+    }
+}
+
+impl<'s> Clone for Box<dyn HashMapInstance<'s> + 's> {
+    fn clone(&self) -> Self {
+        self.boxed_clone()
+    }
+}
+
 /// A reflected [`Option`]
 pub trait OptionInstance<'s>: Instance<'s> {
     /// Returns a reference to a field in a reflected vec
@@ -332,6 +385,128 @@ impl<'s, T: Typed<'s> + Clone + 's + PartialEq> Typed<'s> for Vec<T> {
         's: 'a,
     {
         Value::from_vec(self)
+    }
+}
+
+impl<'s, T> Instance<'s> for HashMap<String, T>
+where
+    T: Typed<'s> + Clone + 's + PartialEq,
+{
+    fn name(&self) -> SmolStr {
+        format!("HashMap<String, {:?}>", T::ty()).into() 
+    }
+
+    fn as_inst(&self) -> &(dyn Instance<'s> + 's) {
+        self
+    }
+}
+
+impl<'s, T> HashMapInstance<'s> for HashMap<String, T>
+where
+    T: Typed<'s> + Clone + 's + PartialEq,
+{
+    fn get_value<'a>(&'a self, key: &str) -> Option<Value<'a, 's>>
+    where
+        's: 'a,
+    {
+        let val = self.get(key)?.as_value();
+        Some(val)
+    }
+
+    fn update<'a>(
+        &'a mut self,
+        update: &'a (dyn HashMapInstance<'s> + 's),
+        field_mask: Option<&FieldMask>,
+        replace_repeated: bool,
+    ) -> Result<(), Error> {
+        if let Some(map) = Value::from_hashmap(update).borrow::<&HashMap<String, T>>() {
+            match (replace_repeated, field_mask) {
+                (true, None) => {
+                    let _ = std::mem::replace(self as &mut HashMap<String, T>, map.clone());
+                }
+                (true, Some(mask)) => {
+                    let masked_keys_to_remove: Vec<String> = self
+                        .keys()
+                        .filter(|k| {
+                            let in_mask = mask.child(&SmolStr::new(k.as_str())).is_some();
+                            let in_update = map.contains_key(k.as_str());
+                            in_mask && !in_update
+                        })
+                        .cloned()
+                        .collect();
+                    for key in masked_keys_to_remove {
+                        self.remove(&key);
+                    }
+                    for (key, value) in map.iter() {
+                        if mask.child(&SmolStr::new(key.as_str())).is_some() {
+                            self.insert(key.clone(), value.clone());
+                        }
+                    }
+                }
+                (false, None) => {
+                    for (key, value) in map.iter() {
+                        self.insert(key.clone(), value.clone());
+                    }
+                }
+                (false, Some(mask)) => {
+                    for (key, value) in map.iter() {
+                        if mask.child(&SmolStr::new(key.as_str())).is_some() {
+                            self.insert(key.clone(), value.clone());
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn values<'a>(&'a self) -> HashMap<String, CowValue<'a, 's>>
+    where
+        's: 'a,
+    {
+        self.iter()
+            .map(|(k, v)| {
+                let key_str = k.clone(); 
+                let cow_val = CowValue::Ref(v.as_value());
+                (key_str, cow_val)
+            })
+            .collect()
+    }
+
+    fn boxed_clone(&self) -> Box<dyn HashMapInstance<'s> + 's> {
+        Box::new(self.clone())
+    }
+
+    fn is_empty(&self) -> bool {
+        HashMap::is_empty(self)
+    }
+
+    fn len(&self) -> usize {
+        HashMap::len(self)
+    }
+
+    fn hashmap_eq(&self, inst: &(dyn HashMapInstance<'s> + 's)) -> bool {
+        inst.as_inst().downcast_ref::<Self>() == Some(self)
+    }
+        
+    fn into_boxed_instance(self: Box<Self>) -> Box<dyn Instance<'s> + 's> {
+        self
+    }
+}
+
+impl<'s, T> Typed<'s> for HashMap<String, T>
+where
+    T: Typed<'s> + Clone + 's + PartialEq,
+{
+    fn ty() -> ValueTy {
+        ValueTy::HashMap(Box::new(T::ty()))
+    }
+
+    fn as_value<'a>(&'a self) -> Value<'a, 's>
+    where
+        's: 'a,
+    {
+        Value::from_hashmap(self)
     }
 }
 

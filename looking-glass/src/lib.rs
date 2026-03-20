@@ -11,7 +11,7 @@
 //! to implement the various traits here,
 //! as care must be taken when implementing them to not enable
 //! undefined behaviour. Check out the docs for [`Value`], [`StructInstance`], [`VecInstance`],
-//! [`OptionInstance`], and [`EnumInstance`] for
+//! [`HashMapInstance`], [`OptionInstance`], and [`EnumInstance`] for
 //!
 //!
 //! # Examples
@@ -119,6 +119,7 @@ where
             ValueInner::String(s) => s.as_inst().downcast_ref::<T>(),
             ValueInner::Bytes(b) => b.as_inst().downcast_ref::<T>(),
             ValueInner::Vec(v) => v.as_inst().downcast_ref::<T>(),
+            ValueInner::HashMap(h) => h.as_inst().downcast_ref::<T>(),
             ValueInner::Struct(s) => s.as_inst().downcast_ref::<T>(),
             ValueInner::Enum(s) => s.as_inst().downcast_ref::<T>(),
             ValueInner::Option(s) => s.as_inst().downcast_ref::<T>(),
@@ -139,6 +140,7 @@ impl<'ty, T: Instance<'ty> + Typed<'ty> + 'ty> IntoInner<T> for OwnedValue<'ty> 
     fn into_inner(self) -> Result<T, Error> {
         let inst = match self {
             OwnedValue::Vec(s) => s.into_boxed_instance(),
+            OwnedValue::HashMap(s) => s.into_boxed_instance(),
             OwnedValue::Enum(s) => s.into_boxed_instance(),
             OwnedValue::Struct(s) => s.into_boxed_instance(),
             OwnedValue::Option(s) => s.into_boxed_instance(),
@@ -201,6 +203,8 @@ pub enum ValueTy {
     Vec(Box<ValueTy>),
     StructInstance,
     Struct(TypeId),
+    HashMapInstance,
+    HashMap(Box<ValueTy>),
     Enum(TypeId),
     Option(Box<ValueTy>),
 }

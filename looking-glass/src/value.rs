@@ -32,6 +32,7 @@ where
     String(&'val String),
     Str(&'val str),
     Vec(&'val (dyn VecInstance<'ty> + 'ty)),
+    HashMap(&'val (dyn HashMapInstance<'ty> + 'ty)),
     Struct(&'val (dyn StructInstance<'ty> + 'ty)),
     Enum(&'val (dyn EnumInstance<'ty> + 'ty)),
     Bytes(&'val Bytes),
@@ -39,9 +40,14 @@ where
 }
 
 impl<'val, 'ty> Value<'val, 'ty> {
-    /// Creates a [`Value`] from a reflected [`Vec`]
+    /// Creates a [`Value`] from a reflected vec
     pub fn from_vec(s: &'val (dyn VecInstance<'ty> + 'ty)) -> Value<'val, 'ty> {
         Value(ValueInner::Vec(s))
+    }
+
+    /// Creates a [`Value`] from a reflected hashmap
+    pub fn from_hashmap(s: &'val (dyn HashMapInstance<'ty> + 'ty)) -> Value<'val, 'ty> {
+        Value(ValueInner::HashMap(s))
     }
 
     /// Creates a [`Value`] from a reflected struct
@@ -126,6 +132,7 @@ impl<'val, 'ty> Value<'val, 'ty> {
             ValueInner::String(s) => OwnedValue::String(s.clone()),
             ValueInner::Str(s) => OwnedValue::String(s.to_string()),
             ValueInner::Vec(v) => OwnedValue::Vec(v.boxed_clone()),
+            ValueInner::HashMap(v) => OwnedValue::HashMap(v.boxed_clone()),
             ValueInner::Struct(s) => OwnedValue::Struct(s.boxed_clone()),
             ValueInner::Enum(e) => OwnedValue::Enum(e.boxed_clone()),
             ValueInner::Bytes(b) => OwnedValue::Bytes(b.clone()),
@@ -280,6 +287,7 @@ impl std::fmt::Debug for Value<'_, '_> {
             ValueInner::String(x) => std::fmt::Debug::fmt(&x, f),
             ValueInner::Str(x) => std::fmt::Debug::fmt(&x, f),
             ValueInner::Vec(x) => std::fmt::Debug::fmt(&x, f),
+            ValueInner::HashMap(x) => std::fmt::Debug::fmt(&x, f),
             ValueInner::Struct(x) => std::fmt::Debug::fmt(&x, f),
             ValueInner::Enum(x) => std::fmt::Debug::fmt(&x, f),
             ValueInner::Bytes(x) => std::fmt::Debug::fmt(&x, f),
