@@ -15,4 +15,4 @@ smol_str = "0.1"
 thiserror = "1"
 
 [dev-dependencies]
-looking-glass-derive  = { version = "0.1.3", path = "../looking-glass-derive" }
+looking-glass-derive  = { path = "../looking-glass-derive" }
