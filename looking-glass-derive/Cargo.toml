@@ -17,5 +17,5 @@ syn = "1"
 quote = "1.0.2"
 
 [dev-dependencies]
-looking-glass = { version = "0.1.3", path = "../looking-glass" }
+looking-glass = { path = "../looking-glass" }
 trybuild = "1.0"
