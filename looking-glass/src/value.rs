@@ -99,6 +99,14 @@ impl<'val, 'ty> Value<'val, 'ty> {
         }
     }
 
+    /// Attempts to cast `Value` to a [`HashMapInstance`]
+    pub fn as_reflected_hashmap(&self) -> Option<&'val (dyn HashMapInstance<'ty> + 'ty)> {
+        match self.0 {
+            ValueInner::HashMap(v) => Some(v),
+            _ => None,
+        }
+    }
+
     /// Attempts to cast `Value` to a [`EnumInstance`]
     pub fn as_reflected_enum(&'val self) -> Option<&(dyn EnumInstance<'ty> + 'ty)> {
         match self.0 {
