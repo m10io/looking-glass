@@ -115,6 +115,14 @@ impl<'val, 'ty> Value<'val, 'ty> {
         }
     }
 
+    /// Attempts to cast `Value` to a [`HashMapInstance`]
+    pub fn as_reflected_hashmap(&self) -> Option<&'val (dyn HashMapInstance<'ty> + 'ty)> {
+        match self.0 {
+            ValueInner::HashMap(v) => Some(v),
+            _ => None,
+        }
+    }
+
     /// Clones the underlying value, and returns a [`OwnedValue`]
     pub fn to_owned(&self) -> OwnedValue<'ty> {
         match self.0 {
@@ -186,6 +194,22 @@ impl<'val, 'ty> Value<'val, 'ty> {
             (ValueInner::Bytes(l), ValueInner::Bytes(r)) => l == r,
             (ValueInner::Struct(l), ValueInner::Struct(r)) => {
                 match_map_fields(l.values(), r.values())
+            }
+            (ValueInner::HashMap(l), ValueInner::HashMap(r)) => {
+                if l.values().len() != r.values().len() {
+                    return false;
+                }
+
+                for (k, v) in l.values() {
+                    if let Some(r_val) = r.values().get(&k) {
+                        if !v.slow_eq(r_val) {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+                return true;
             }
             (ValueInner::Vec(l), ValueInner::Vec(r)) => match_vec_fields(l.values(), r.values()),
             (ValueInner::Enum(l), ValueInner::Enum(r)) => match (l.field(), r.field()) {
@@ -319,6 +343,7 @@ impl PartialEq for Value<'_, '_> {
             (ValueInner::Struct(l), ValueInner::Struct(r)) => l == r,
             (ValueInner::Option(l), ValueInner::Option(r)) => l == r,
             (ValueInner::Enum(l), ValueInner::Enum(r)) => l == r,
+            (ValueInner::HashMap(l), ValueInner::HashMap(r)) => l == r,
             (_, _) => false,
         }
     }
