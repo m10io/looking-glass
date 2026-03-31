@@ -239,6 +239,8 @@ pub trait HashMapInstance<'s>: Instance<'s> + 's {
 
     fn hashmap_eq(&self, inst: &(dyn HashMapInstance<'s> + 's)) -> bool;
 
+    fn contains(&self, sub_inst: &(dyn HashMapInstance<'s> + 's)) -> bool;
+
     fn into_boxed_instance(self: Box<Self>) -> Box<dyn Instance<'s> + 's>;
 }
 
@@ -487,6 +489,22 @@ where
 
     fn hashmap_eq(&self, inst: &(dyn HashMapInstance<'s> + 's)) -> bool {
         inst.as_inst().downcast_ref::<Self>() == Some(self)
+    }
+
+    fn contains(&self, sub_inst: &(dyn HashMapInstance<'s> + 's)) -> bool {
+        for (field, sub_inst_value) in sub_inst.values() {
+            if let Some(self_value) = self.get(&field) {
+                if !sub_inst_value.as_ref().slow_eq(&self_value.as_value()) {
+                    return false;
+                }
+
+                continue;
+            }
+
+            return false;
+        }
+
+        true
     }
         
     fn into_boxed_instance(self: Box<Self>) -> Box<dyn Instance<'s> + 's> {

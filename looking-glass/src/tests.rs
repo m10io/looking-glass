@@ -1,5 +1,6 @@
-use crate::{IntoInner, Typed};
+use crate::{HashMapInstance, Instance, IntoInner, Typed};
 use std::ops::Deref;
+use std::collections::HashMap;
 
 #[test]
 fn test_value_copy_types() {
@@ -27,6 +28,13 @@ fn test_value_ref_types() {
         test.get_value(0).unwrap().borrow::<&String>().unwrap(),
         &"test".to_string()
     );
+    let map: HashMap<String, String> = HashMap::from([
+        ("some_key_1".to_string(), "some_value_1".to_string()),
+        ("some_key_2".to_string(), "some_value_2".to_string()),
+        ("some_key_3".to_string(), "some_value_3".to_string()),
+    ]);
+    let val = map.as_value();
+    assert_eq!(&map, val.borrow::<&HashMap<String, String>>().unwrap());
 }
 
 #[test]
@@ -36,4 +44,22 @@ fn test_into_inner() {
     let owned = val.to_owned();
     let vecb: Vec<u64> = owned.into_inner().expect("into inner failed");
     assert_eq!(vec, vecb);
+}
+
+#[test]
+fn test_hashmap_contains() {
+    let map: HashMap<String, String> = HashMap::from([
+        ("some_key_1".to_string(), "some_value_1".to_string()),
+        ("some_key_2".to_string(), "some_value_2".to_string()),
+        ("some_key_3".to_string(), "some_value_3".to_string()),
+    ]);
+    let inst = map.as_value().as_reflected_hashmap().unwrap();
+
+    let submap: HashMap<String, String> = HashMap::from([
+        ("some_key_1".to_string(), "some_value_1".to_string()),
+        ("some_key_2".to_string(), "some_value_2".to_string()),
+    ]);
+    let sub_inst = submap.as_value().as_reflected_hashmap().unwrap();
+
+    assert!(inst.contains(sub_inst));
 }

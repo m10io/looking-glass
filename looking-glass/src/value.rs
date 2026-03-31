@@ -196,20 +196,7 @@ impl<'val, 'ty> Value<'val, 'ty> {
                 match_map_fields(l.values(), r.values())
             }
             (ValueInner::HashMap(l), ValueInner::HashMap(r)) => {
-                if l.values().len() != r.values().len() {
-                    return false;
-                }
-
-                for (k, v) in l.values() {
-                    if let Some(r_val) = r.values().get(&k) {
-                        if !v.slow_eq(r_val) {
-                            return false;
-                        }
-                    } else {
-                        return false;
-                    }
-                }
-                return true;
+                match_raw_map_fields(l.values(), r.values())
             }
             (ValueInner::Vec(l), ValueInner::Vec(r)) => match_vec_fields(l.values(), r.values()),
             (ValueInner::Enum(l), ValueInner::Enum(r)) => match (l.field(), r.field()) {
@@ -272,6 +259,29 @@ fn match_vec_fields(l_fields: Vec<CowValue<'_, '_>>, r_fields: Vec<CowValue<'_, 
             return false;
         }
     }
+    true
+}
+
+fn match_raw_map_fields(
+    l_fields: HashMap<String, CowValue<'_, '_>>,
+    r_fields: HashMap<String, CowValue<'_, '_>>,
+) -> bool {
+    if l_fields.len() != r_fields.len() {
+        return false;
+    }
+
+    for (field, l_val) in &l_fields {
+        if let Some(r_val) = r_fields.get(field) {
+            if !l_val.slow_eq(r_val) {
+                return false;
+            }
+
+            continue;
+        }
+
+        return false;
+    }
+
     true
 }
 
