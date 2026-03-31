@@ -270,19 +270,9 @@ fn match_raw_map_fields(
         return false;
     }
 
-    for (field, l_val) in &l_fields {
-        if let Some(r_val) = r_fields.get(field) {
-            if !l_val.slow_eq(r_val) {
-                return false;
-            }
-
-            continue;
-        }
-
-        return false;
-    }
-
-    true
+    l_fields.iter().all(|(field, l_val)| {
+        r_fields.get(field).map_or(false, |r_val| l_val.slow_eq(r_val))
+    })
 }
 
 fn match_map_fields(

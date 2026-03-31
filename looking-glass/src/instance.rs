@@ -239,7 +239,11 @@ pub trait HashMapInstance<'s>: Instance<'s> + 's {
 
     fn hashmap_eq(&self, inst: &(dyn HashMapInstance<'s> + 's)) -> bool;
 
-    fn contains(&self, sub_inst: &(dyn HashMapInstance<'s> + 's)) -> bool;
+    fn contains(&self, sub_inst: &(dyn HashMapInstance<'s> + 's)) -> bool {
+        sub_inst.values().into_iter().all(|(k, v)| {
+            self.get_value(&k).map_or(false, |sv| v.as_ref().slow_eq(&sv))
+        })
+    }
 
     fn into_boxed_instance(self: Box<Self>) -> Box<dyn Instance<'s> + 's>;
 }
@@ -492,19 +496,14 @@ where
     }
 
     fn contains(&self, sub_inst: &(dyn HashMapInstance<'s> + 's)) -> bool {
-        for (field, sub_inst_value) in sub_inst.values() {
-            if let Some(self_value) = self.get(&field) {
-                if !sub_inst_value.as_ref().slow_eq(&self_value.as_value()) {
-                    return false;
-                }
-
-                continue;
-            }
-
-            return false;
+        if let Some(other) = sub_inst.as_inst().downcast_ref::<Self>() {
+            return other.iter().all(|(k, v)| self.get(k) == Some(v));
         }
 
-        true
+        sub_inst.values().into_iter().all(|(field, sub_inst_value)| {
+            self.get(&field)
+                .map_or(false, |self_value| sub_inst_value.as_ref().slow_eq(&self_value.as_value()))
+        })
     }
         
     fn into_boxed_instance(self: Box<Self>) -> Box<dyn Instance<'s> + 's> {
