@@ -115,6 +115,14 @@ impl<'val, 'ty> Value<'val, 'ty> {
         }
     }
 
+    /// Attempts to cast `Value` to a [`HashMapInstance`]
+    pub fn as_reflected_hashmap(&self) -> Option<&'val (dyn HashMapInstance<'ty> + 'ty)> {
+        match self.0 {
+            ValueInner::HashMap(v) => Some(v),
+            _ => None,
+        }
+    }
+
     /// Clones the underlying value, and returns a [`OwnedValue`]
     pub fn to_owned(&self) -> OwnedValue<'ty> {
         match self.0 {
@@ -187,6 +195,9 @@ impl<'val, 'ty> Value<'val, 'ty> {
             (ValueInner::Struct(l), ValueInner::Struct(r)) => {
                 match_map_fields(l.values(), r.values())
             }
+            (ValueInner::HashMap(l), ValueInner::HashMap(r)) => {
+                match_raw_map_fields(l.values(), r.values())
+            }
             (ValueInner::Vec(l), ValueInner::Vec(r)) => match_vec_fields(l.values(), r.values()),
             (ValueInner::Enum(l), ValueInner::Enum(r)) => match (l.field(), r.field()) {
                 (EnumField::Unit(l), EnumField::Unit(r)) => l == r,
@@ -249,6 +260,19 @@ fn match_vec_fields(l_fields: Vec<CowValue<'_, '_>>, r_fields: Vec<CowValue<'_, 
         }
     }
     true
+}
+
+fn match_raw_map_fields(
+    l_fields: HashMap<String, CowValue<'_, '_>>,
+    r_fields: HashMap<String, CowValue<'_, '_>>,
+) -> bool {
+    if l_fields.len() != r_fields.len() {
+        return false;
+    }
+
+    l_fields.iter().all(|(field, l_val)| {
+        r_fields.get(field).map_or(false, |r_val| l_val.slow_eq(r_val))
+    })
 }
 
 fn match_map_fields(
@@ -319,6 +343,7 @@ impl PartialEq for Value<'_, '_> {
             (ValueInner::Struct(l), ValueInner::Struct(r)) => l == r,
             (ValueInner::Option(l), ValueInner::Option(r)) => l == r,
             (ValueInner::Enum(l), ValueInner::Enum(r)) => l == r,
+            (ValueInner::HashMap(l), ValueInner::HashMap(r)) => l == r,
             (_, _) => false,
         }
     }
